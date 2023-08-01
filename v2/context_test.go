@@ -1,19 +1,15 @@
-// +build go1.7
-
-package tomb_test
+package tomb
 
 import (
 	"context"
 	"testing"
 	"time"
-
-	"gopkg.in/tomb.v2"
 )
 
 func TestWithContext(t *testing.T) {
 	parent1, cancel1 := context.WithCancel(context.Background())
 
-	tb, child1 := tomb.WithContext(parent1)
+	tb, child1 := WithContext(parent1)
 
 	if !tb.Alive() {
 		t.Fatalf("WithContext returned dead tomb")
@@ -107,7 +103,7 @@ func TestWithContext(t *testing.T) {
 }
 
 func TestContextNoParent(t *testing.T) {
-	var tb tomb.Tomb
+	var tb Tomb
 
 	parent2, cancel2 := context.WithCancel(context.WithValue(context.Background(), "parent", "parent2"))
 	child2 := tb.Context(parent2)

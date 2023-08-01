@@ -1,21 +1,21 @@
-package tomb_test
+package tomb
 
 import (
 	"errors"
-	"gopkg.in/tomb.v2"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func nothing() error { return nil }
 
 func TestNewTomb(t *testing.T) {
-	tb := &tomb.Tomb{}
-	checkState(t, tb, false, false, tomb.ErrStillAlive)
+	tb := &Tomb{}
+	checkState(t, tb, false, false, ErrStillAlive)
 }
 
 func TestGo(t *testing.T) {
-	tb := &tomb.Tomb{}
+	tb := &Tomb{}
 	alive := make(chan bool)
 	tb.Go(func() error {
 		alive <- true
@@ -29,7 +29,7 @@ func TestGo(t *testing.T) {
 	})
 	<-alive
 	<-alive
-	checkState(t, tb, false, false, tomb.ErrStillAlive)
+	checkState(t, tb, false, false, ErrStillAlive)
 	tb.Kill(nil)
 	tb.Wait()
 	checkState(t, tb, true, true, nil)
@@ -38,7 +38,7 @@ func TestGo(t *testing.T) {
 func TestGoErr(t *testing.T) {
 	first := errors.New("first error")
 	second := errors.New("first error")
-	tb := &tomb.Tomb{}
+	tb := &Tomb{}
 	alive := make(chan bool)
 	tb.Go(func() error {
 		alive <- true
@@ -57,7 +57,7 @@ func TestGoErr(t *testing.T) {
 
 func TestGoPanic(t *testing.T) {
 	// ErrDying being used properly, after a clean death.
-	tb := &tomb.Tomb{}
+	tb := &Tomb{}
 	tb.Go(nothing)
 	tb.Wait()
 	defer func() {
@@ -72,7 +72,7 @@ func TestGoPanic(t *testing.T) {
 
 func TestKill(t *testing.T) {
 	// a nil reason flags the goroutine as dying
-	tb := &tomb.Tomb{}
+	tb := &Tomb{}
 	tb.Kill(nil)
 	checkState(t, tb, true, false, nil)
 
@@ -91,11 +91,11 @@ func TestKill(t *testing.T) {
 }
 
 func TestKillf(t *testing.T) {
-	tb := &tomb.Tomb{}
+	tb := &Tomb{}
 
 	err := tb.Killf("BO%s", "OM")
 	if s := err.Error(); s != "BOOM" {
-		t.Fatalf(`Killf("BO%s", "OM"): want "BOOM", got %q`, s)
+		t.Fatalf(`want "BOOM", got %q`, s)
 	}
 	checkState(t, tb, true, false, err)
 
@@ -110,42 +110,42 @@ func TestKillf(t *testing.T) {
 
 func TestErrDying(t *testing.T) {
 	// ErrDying being used properly, after a clean death.
-	tb := &tomb.Tomb{}
+	tb := &Tomb{}
 	tb.Kill(nil)
-	tb.Kill(tomb.ErrDying)
+	tb.Kill(ErrDying)
 	checkState(t, tb, true, false, nil)
 
 	// ErrDying being used properly, after an errorful death.
 	err := errors.New("some error")
 	tb.Kill(err)
-	tb.Kill(tomb.ErrDying)
+	tb.Kill(ErrDying)
 	checkState(t, tb, true, false, err)
 
 	// ErrDying being used badly, with an alive tomb.
-	tb = &tomb.Tomb{}
+	tb = &Tomb{}
 	defer func() {
 		err := recover()
 		if err != "tomb: Kill with ErrDying while still alive" {
 			t.Fatalf("Wrong panic on Kill(ErrDying): %v", err)
 		}
-		checkState(t, tb, false, false, tomb.ErrStillAlive)
+		checkState(t, tb, false, false, ErrStillAlive)
 	}()
-	tb.Kill(tomb.ErrDying)
+	tb.Kill(ErrDying)
 }
 
 func TestKillErrStillAlivePanic(t *testing.T) {
-	tb := &tomb.Tomb{}
+	tb := &Tomb{}
 	defer func() {
 		err := recover()
 		if err != "tomb: Kill with ErrStillAlive" {
 			t.Fatalf("Wrong panic on Kill(ErrStillAlive): %v", err)
 		}
-		checkState(t, tb, false, false, tomb.ErrStillAlive)
+		checkState(t, tb, false, false, ErrStillAlive)
 	}()
-	tb.Kill(tomb.ErrStillAlive)
+	tb.Kill(ErrStillAlive)
 }
 
-func checkState(t *testing.T, tb *tomb.Tomb, wantDying, wantDead bool, wantErr error) {
+func checkState(t *testing.T, tb *Tomb, wantDying, wantDead bool, wantErr error) {
 	select {
 	case <-tb.Dying():
 		if !wantDying {
@@ -173,11 +173,7 @@ func checkState(t *testing.T, tb *tomb.Tomb, wantDying, wantDead bool, wantErr e
 	}
 	if wantDead && seemsDead {
 		waitErr := tb.Wait()
-		switch {
-		case waitErr == tomb.ErrStillAlive:
-			t.Errorf("Wait should not return ErrStillAlive")
-		case !reflect.DeepEqual(waitErr, wantErr):
-			t.Errorf("Wait: want %#v, got %#v", wantErr, waitErr)
-		}
+		assert.NotErrorIs(t, waitErr, ErrStillAlive, "Wait should not return ErrStillAlive")
+		assert.ErrorIs(t, waitErr, wantErr)
 	}
 }

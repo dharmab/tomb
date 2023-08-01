@@ -1,6 +1,7 @@
 tomb - support for clean goroutine termination in Go.
 
 Copyright (c) 2010-2011 - Gustavo Niemeyer <gustavo@niemeyer.net>
+Copyright (c) 2023 - Dharma Bellamkonda
 
 All rights reserved.
 
